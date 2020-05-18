@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/unidoc/unipdf/v3/core"
 	pdf "github.com/unidoc/unipdf/v3/model"
 	"io/ioutil"
 	"math"
@@ -13,19 +14,80 @@ import (
 )
 
 func main() {
-	var inputPath = "C:\\Users\\lixin\\Desktop\\PMP全真模拟试题一.pdf"
+	var inputPath = "F:\\BaiduNetdiskDownload\\02-容器化进阶K8S\\讲义\\容器化进阶Kubernetes课程讲义.pdf"
 
-	outputPath := "C:\\Users\\lixin\\Desktop\\outputpdf\\"
+	outputPath := "F:\\BaiduNetdiskDownload\\02-容器化进阶K8S\\讲义\\"
 
-	err := splitPdf(inputPath, outputPath, 5)
+	rmWaterMark(inputPath, outputPath)
+	//err := splitPdf(inputPath, outputPath, 5)
+	//if err != nil {
+	//	fmt.Printf("Error: %v\n", err)
+	//	os.Exit(1)
+	//}
+	//
+	//mergePdf(outputPath,outputPath)
+	//fmt.Printf("Complete, see output file: %s\n", outputPath)
+	println(inputPath)
+}
+
+func rmWaterMark(inputPath, outputPath string) error {
+	f, err := os.Open(inputPath)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
-	mergePdf(outputPath,outputPath)
-	fmt.Printf("Complete, see output file: %s\n", outputPath)
-	println(inputPath)
+	defer f.Close()
+
+	pdfWriter := pdf.NewPdfWriter()
+	pdfReader, err := pdf.NewPdfReaderLazy(f)
+	if err != nil {
+		return err
+	}
+	fileExt := filepath.Ext(f.Name())
+	fileName := strings.TrimSuffix(filepath.Base(f.Name()), fileExt)
+	println(fileName)
+	isEncrypted, err := pdfReader.IsEncrypted()
+	if err != nil {
+		return err
+	}
+
+	if isEncrypted {
+		_, err = pdfReader.Decrypt([]byte(""))
+		if err != nil {
+			return err
+		}
+	}
+
+	numPages, err := pdfReader.GetNumPages()
+	if err != nil {
+		return err
+	}
+	//pdfWriter := pdf.NewPdfWriter()
+
+	for i := 0; i < numPages; i++ {
+		pdfPage, _ := pdfReader.GetPage(i + 1)
+		dic := pdfPage.Resources.XObject.(*core.PdfObjectDictionary)
+		var kObj core.PdfObjectName
+		for _, kObj = range dic.Keys() {
+			dic.Remove(kObj)
+			//fmt.Println(dic.Get(kObj))
+			//	dic.Set(kObj,nil)
+		}
+
+		pdfWriter.AddPage(pdfPage)
+	}
+	outFull := outputPath + "rmwaterMarker" + fileExt
+	fmt.Println(outFull)
+	fWrite, err := os.Create(outFull)
+	if err != nil {
+		return err
+	}
+
+	defer fWrite.Close()
+
+	err = pdfWriter.Write(fWrite)
+
+	return nil
 }
 
 func splitPdf(inputPath string, outputPath string, splitfiles int) error {
@@ -41,7 +103,7 @@ func splitPdf(inputPath string, outputPath string, splitfiles int) error {
 	if err != nil {
 		return err
 	}
-	fileExt:=filepath.Ext(f.Name())
+	fileExt := filepath.Ext(f.Name())
 	fileName := strings.TrimSuffix(filepath.Base(f.Name()), fileExt)
 	println(fileName)
 	isEncrypted, err := pdfReader.IsEncrypted()
@@ -61,8 +123,8 @@ func splitPdf(inputPath string, outputPath string, splitfiles int) error {
 		return err
 	}
 
-	prefilePages := int(math.Ceil(float64(numPages)/ float64(splitfiles)))
-	println(strconv.Itoa(numPages)+" "+strconv.Itoa(prefilePages))
+	prefilePages := int(math.Ceil(float64(numPages) / float64(splitfiles)))
+	println(strconv.Itoa(numPages) + " " + strconv.Itoa(prefilePages))
 
 	for i := 0; i < splitfiles; i++ {
 
@@ -70,7 +132,7 @@ func splitPdf(inputPath string, outputPath string, splitfiles int) error {
 
 		for y := i * prefilePages; y < numPages && y < (i+1)*prefilePages; y++ {
 
-			pageNum := y+1
+			pageNum := y + 1
 			println(pageNum)
 			page, err := pdfReader.GetPage(pageNum)
 			if err != nil {
@@ -102,7 +164,7 @@ func splitPdf(inputPath string, outputPath string, splitfiles int) error {
 func mergePdf(inputFolder string, outputPath string) error {
 
 	var inputPaths []string
-	allFiles,err := ioutil.ReadDir(inputFolder)
+	allFiles, err := ioutil.ReadDir(inputFolder)
 
 	var fileExt string
 	for _, file := range allFiles {
@@ -164,8 +226,7 @@ func mergePdf(inputFolder string, outputPath string) error {
 		}
 	}
 
-
-	fWrite, err := os.Create(outputPath+"merged"+fileExt)
+	fWrite, err := os.Create(outputPath + "merged" + fileExt)
 	if err != nil {
 		return err
 	}

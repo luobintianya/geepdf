@@ -42,6 +42,7 @@ func folderExitOrnot(fielPath string) bool {
 		return false
 	}
 
+	return true
 }
 
 func rmWaterMark(inputPath, outputPath string) error {

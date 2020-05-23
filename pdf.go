@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"errors"
 	"fmt"
 	"github.com/unidoc/unipdf/v3/contentstream"
@@ -16,18 +17,26 @@ import (
 )
 
 func main() {
-	var inputPath = "G:\\2\\iro 24 - 副本.pdf"
+	var inputPath = "G:\\2\\hiragana-sigoto2012-1.pdf"
 	outputPath := "G:\\2\\"
-	rmWaterMark(inputPath, outputPath)
-	if !folderExitOrnot(outputPath) {
-		os.MkdirAll(outputPath, 777)
-	}
-	//err := splitPdf(inputPath, outputPath, 12)
+	//allFiles := listFiles(inputPath, ".pdf")
+	//if !folderExitOrnot(outputPath) {
+	//	os.MkdirAll(outputPath, 777)
+	//}
+	//fmt.Println(allFiles.Back())
+	//var index int
+	//for inputPath := allFiles.Front(); inputPath != nil; inputPath = inputPath.Next() {
+	//	index = index+1
+	// rmWaterMark(inputPath.Value.(string), outputPath+"out\\", "-rmwaterMaker"+strconv.Itoa(index))
+	rmWaterMark(inputPath, outputPath, "rmwaterMaker")
+	//
+	//}
+	//splitPdf(inputPath, outputPath+"\\cai\\", 7)
 	//if err != nil {
 	//	fmt.Printf("Error: %v\n", err)
 	//	os.Exit(1)
 	//}
-	//
+	////
 	//mergePdf(outputPath,outputPath)
 	//fmt.Printf("Complete, see output file: %s\n", outputPath)
 	println(inputPath)
@@ -45,7 +54,7 @@ func folderExitOrnot(fielPath string) bool {
 	return true
 }
 
-func rmWaterMark(inputPath, outputPath string) error {
+func rmWaterMark(inputPath, outputPath, outFileSuffix string) error {
 	f, err := os.Open(inputPath)
 	if err != nil {
 		return err
@@ -108,7 +117,7 @@ func rmWaterMark(inputPath, outputPath string) error {
 		}
 		pdfWriter.AddPage(pdfPage)
 	}
-	outFull := outputPath + "rmwaterMarker" + fileExt
+	outFull := outputPath + fileName + outFileSuffix + fileExt
 	fmt.Println(outFull)
 	fWrite, err := os.Create(outFull)
 	if err != nil {
@@ -125,8 +134,9 @@ func rmWaterMark(inputPath, outputPath string) error {
 func filterTj(content *core.PdfObjectStream, left bool) {
 
 	fla, _ := core.DecodeStream(content)
+	fmt.Println("====ORG==================================")
 	fmt.Println(string(fla))
-	fmt.Println("proc==================================")
+	fmt.Println("====END ORG============ST======================")
 	cStreamParser := contentstream.NewContentStreamParser(string(fla))
 	parsed, _ := cStreamParser.Parse()
 	needreset := false
@@ -163,14 +173,24 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 				y := i2.Params[position-1]
 				typex := reflect.TypeOf(x)
 				typey := reflect.TypeOf(y)
+				//fmt.Println(typex.Elem().Name(), typex.Elem().Kind())
+				//fmt.Println(&x)
+				//fmt.Println(x)
+				//if validateTm(x, y) {
+				//	(*parsed)[id] = &contentstream.ContentStreamOperation{}
+				//	needreset = true
+				//	startrm = true
+				//	printRomved(i2)
+				//}
 				if typex.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) && (typey.Elem() == reflect.TypeOf(core.PdfObjectFloat(0))) {
 
-					if (*x.(*core.PdfObjectFloat) < 16 && *y.(*core.PdfObjectFloat) > 250 && *y.(*core.PdfObjectFloat) < 608) || validatekaKa(x.(*core.PdfObjectFloat), y.(*core.PdfObjectFloat)) {
+					if validatekaKa(x.(*core.PdfObjectFloat), y.(*core.PdfObjectFloat)) {
 						(*parsed)[id] = &contentstream.ContentStreamOperation{}
 						needreset = true
 						startrm = true
-						fmt.Println("=============")
-						fmt.Println(i2)
+
+						printRomved(i2, " Tm ")
+
 					}
 				}
 
@@ -185,10 +205,10 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 
 					if validatekother(x.(*core.PdfObjectFloat), y.(*core.PdfObjectFloat)) {
 						(*parsed)[id] = &contentstream.ContentStreamOperation{}
-						needreset = true
+
 						startrm = true
-						fmt.Println("=============")
-						fmt.Println(i2)
+						printRomved(i2, " CM ")
+						needreset = false
 					}
 
 				}
@@ -196,33 +216,33 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 			} else if i2.Operand == "l" || i2.Operand == "c" {
 				if startrm {
 					(*parsed)[id] = &contentstream.ContentStreamOperation{}
-					startrm = true
+
 					needreset = true
-					fmt.Println("=============")
-					fmt.Println(i2)
+					printRomved(i2, " l OR c ")
+					startrm = true
 				}
 
 				//fmt.Println(strconv.Itoa(i) )
 			} else if i2.Operand == "h" || i2.Operand == "re" || i2.Operand == "TJ" || i2.Operand == "Tj" {
 				if startrm {
 					(*parsed)[id] = &contentstream.ContentStreamOperation{}
-					fmt.Println("=============")
-					fmt.Println(i2)
+					printRomved(i2, "TJ OR RE OR Tj OR h")
+					//startrm=false
 				}
 			} else if i2.Operand == "m" {
-				startrm = false
+
 				position := len(i2.Params) - 1
 				x := i2.Params[position]
 				y := i2.Params[position-1]
 				typex := reflect.TypeOf(x)
 				typey := reflect.TypeOf(y)
-				if typex.Elem() == reflect.TypeOf(core.PdfObjectInteger(0)) && (typey.Elem() == reflect.TypeOf(core.PdfObjectInteger(0))) {
-					if *x.(*core.PdfObjectInteger) == 0 && *y.(*core.PdfObjectInteger) == 0 {
+				if typex.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) && (typey.Elem() == reflect.TypeOf(core.PdfObjectFloat(0))) {
+
+					if *x.(*core.PdfObjectFloat) < 16 && *x.(*core.PdfObjectFloat) > -16 && *y.(*core.PdfObjectFloat) > 365 && *y.(*core.PdfObjectFloat) < 370 {
 						(*parsed)[id] = &contentstream.ContentStreamOperation{}
 						needreset = true
 						startrm = true
-						fmt.Println("=============")
-						fmt.Println(i2)
+						printRomved(i2, "m")
 					}
 				}
 			}
@@ -231,7 +251,7 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 	}
 	fmt.Println(alltype)
 	if needreset {
-		fmt.Println(string(parsed.Bytes()))
+		//fmt.Println(string(parsed.Bytes()))
 		content.Stream, _ = core.NewFlateEncoder().EncodeBytes(parsed.Bytes())
 	}
 
@@ -244,8 +264,46 @@ func validatekaKa(y, x *core.PdfObjectFloat) bool {
 	}
 	return false
 }
+func validateTm(y, x core.PdfObject) bool {
+	var vy, vx float64
+
+	typex := reflect.TypeOf(x)
+	typey := reflect.TypeOf(y)
+	fmt.Println(typex.Elem().Name())
+	fmt.Println(typex.Elem().Kind())
+	if typex.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) {
+		vx = reflect.ValueOf(x).Elem().Float()
+	}
+	if typex.Elem() == reflect.TypeOf(core.PdfObjectInteger(0)) {
+		vx = float64(reflect.ValueOf(x).Elem().Int())
+	}
+	if typey.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) {
+		vy = reflect.ValueOf(y).Elem().Float()
+	}
+	if typey.Elem() == reflect.TypeOf(core.PdfObjectInteger(0)) {
+		vy = float64(reflect.ValueOf(y).Elem().Int())
+	}
+
+	if vx > 225 && vy < 22 {
+		return true
+	}
+
+	fmt.Println(vx, vy)
+
+	return false
+}
+
+func printRomved(rmObj *contentstream.ContentStreamOperation, tag string) {
+	fmt.Println("=====RM==BY==" + tag + "======")
+	fmt.Println(rmObj)
+
+}
+
 func validatekother(y, x *core.PdfObjectFloat) bool {
-	if ((*y < 378.5 && *y > 370) || *y < 18) && *x > 568 && *x < 608 {
+	//(*y>37 && *y<366 && *x>568 && *x<573.8) 处理竖条
+
+	// && *x!=569.791 && *x!=570.1025) //处理hiraganahyo-a4-1 的单杠
+	if ((*y < 378.5 && *y > 370) || *y < 18) && *x > 568 && *x < 577 || (*y > 37 && *y < 366 && *x > 568 && *x < 573.8 && *x != 568.5332 && *x != 569.791 && *x != 570.1025) || (*y < 376 && *x > 570 && *x < 578.68 && *x != 575.6201 && *x != 575.6797 && *x != 575.3105) {
 		return true
 	}
 	return false
@@ -322,25 +380,29 @@ func splitPdf(inputPath string, outputPath string, splitfiles int) error {
 	return nil
 }
 
-func mergePdf(inputFolder string, outputPath string) error {
-
-	var inputPaths []string
-	allFiles, err := ioutil.ReadDir(inputFolder)
-
-	var fileExt string
+func listFiles(inputFolder, fileExt string) (all *list.List) {
+	all = list.New()
+	allFiles, _ := ioutil.ReadDir(inputFolder)
 	for _, file := range allFiles {
 		if !file.IsDir() {
 			fileFullPath := inputFolder + file.Name()
-			fileExt = filepath.Ext(fileFullPath)
-			inputPaths = append(inputPaths, fileFullPath)
+			if fileExt == filepath.Ext(fileFullPath) {
+				all.PushFront(fileFullPath)
+			}
 			println(fileFullPath)
 		}
-
 	}
+	return
+}
+
+func mergePdf(inputFolder string, outputPath, fileExt string) error {
+
+	var inputListFiles = listFiles(inputFolder, fileExt)
+
 	pdfWriter := pdf.NewPdfWriter()
 
-	for _, inputPath := range inputPaths {
-		f, err := os.Open(inputPath)
+	for inputPath := inputListFiles.Front(); inputPath != nil; inputPath = inputPath.Next() {
+		f, err := os.Open(inputPath.Value.(string))
 		if err != nil {
 			return err
 		}

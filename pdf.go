@@ -17,21 +17,21 @@ import (
 )
 
 func main() {
-	var inputPath = "G:\\2\\hiragana-sigoto2012-1.pdf"
-	outputPath := "G:\\2\\"
-	//allFiles := listFiles(inputPath, ".pdf")
-	//if !folderExitOrnot(outputPath) {
-	//	os.MkdirAll(outputPath, 777)
-	//}
-	//fmt.Println(allFiles.Back())
-	//var index int
-	//for inputPath := allFiles.Front(); inputPath != nil; inputPath = inputPath.Next() {
-	//	index = index+1
-	// rmWaterMark(inputPath.Value.(string), outputPath+"out\\", "-rmwaterMaker"+strconv.Itoa(index))
-	rmWaterMark(inputPath, outputPath, "rmwaterMaker")
-	//
-	//}
-	//splitPdf(inputPath, outputPath+"\\cai\\", 7)
+	var inputPath = "G:\\2\\"
+	outputPath := "G:\\2\\out\\"
+	allFiles := listFiles(inputPath, ".pdf")
+	if !folderExitOrnot(outputPath) {
+		os.MkdirAll(outputPath, 777)
+	}
+	fmt.Println(allFiles.Back())
+	var index int
+	for inputPath := allFiles.Front(); inputPath != nil; inputPath = inputPath.Next() {
+		index = index + 1
+		rmWaterMark(inputPath.Value.(string), outputPath+"\\", "-rmwaterMaker"+strconv.Itoa(index))
+		//rmWaterMark(inputPath, outputPath, "rmwaterMaker")
+
+	}
+	//splitPdf(inputPath, outputPath+"\\cai\\", 9)
 	//if err != nil {
 	//	fmt.Printf("Error: %v\n", err)
 	//	os.Exit(1)
@@ -143,53 +143,25 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 
 	startrm := false
 	alltype := ""
+
+	fmt.Println("====PCCC==================================")
 	for id, i2 := range *parsed {
 		if !strings.Contains(alltype, i2.Operand) {
 			alltype = alltype + " " + i2.Operand
 		}
 		//cCKkSQmcmlwreTfjBDCrigsTjMJdDoG
 		if i2.Params != nil && !(strings.Contains("BDC k ri gs f EMC q W n  Q BT Tf ET K w d S G Do Td", i2.Operand)) {
-			//
-			//if i2.Operand == "TJ" {
-			//	pfoa := i2.Params[0].(*core.PdfObjectArray)
-			//	for _, ix := range pfoa.Elements() {
-			//		switch vv := ix.(type) {
-			//		case *core.PdfObjectString:
-			//			decoded := vv.Decoded()
-			//			if strings.ContainsAny(decoded, "FãFþGe") || strings.ContainsAny(decoded, "		-	") {
-			//				pfoa.Clear()
-			//				needreset = true
-			//			}
-			//
-			//		}
-			//	}
-			//
-			//} else
 
-			if i2.Operand == "Tm" {
-				startrm = false
-				position := len(i2.Params) - 1
-				x := i2.Params[position]
-				y := i2.Params[position-1]
-				typex := reflect.TypeOf(x)
-				typey := reflect.TypeOf(y)
-				//fmt.Println(typex.Elem().Name(), typex.Elem().Kind())
-				//fmt.Println(&x)
-				//fmt.Println(x)
-				//if validateTm(x, y) {
-				//	(*parsed)[id] = &contentstream.ContentStreamOperation{}
-				//	needreset = true
-				//	startrm = true
-				//	printRomved(i2)
-				//}
-				if typex.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) && (typey.Elem() == reflect.TypeOf(core.PdfObjectFloat(0))) {
-
-					if validatekaKa(x.(*core.PdfObjectFloat), y.(*core.PdfObjectFloat)) {
-						(*parsed)[id] = &contentstream.ContentStreamOperation{}
-						needreset = true
-						startrm = true
-
-						printRomved(i2, " Tm ")
+			if i2.Operand == "TJ" {
+				pfoa := i2.Params[0].(*core.PdfObjectArray)
+				for _, ix := range pfoa.Elements() {
+					switch vv := ix.(type) {
+					case *core.PdfObjectString:
+						decoded := vv.Decoded()
+						if strings.ContainsAny(decoded, "FãFþGe") || strings.ContainsAny(decoded, "		-	") {
+							pfoa.Clear()
+							needreset = true
+						}
 
 					}
 				}
@@ -204,30 +176,35 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 				if typex.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) && (typey.Elem() == reflect.TypeOf(core.PdfObjectFloat(0))) {
 
 					if validatekother(x.(*core.PdfObjectFloat), y.(*core.PdfObjectFloat)) {
-						(*parsed)[id] = &contentstream.ContentStreamOperation{}
 
-						startrm = true
 						printRomved(i2, " CM ")
-						needreset = false
+						(*parsed)[id] = &contentstream.ContentStreamOperation{}
+						startrm = true
+						needreset = true
 					}
 
 				}
 
 			} else if i2.Operand == "l" || i2.Operand == "c" {
 				if startrm {
+
+					printRomved(i2, " l OR c ")
 					(*parsed)[id] = &contentstream.ContentStreamOperation{}
 
 					needreset = true
-					printRomved(i2, " l OR c ")
 					startrm = true
 				}
 
 				//fmt.Println(strconv.Itoa(i) )
 			} else if i2.Operand == "h" || i2.Operand == "re" || i2.Operand == "TJ" || i2.Operand == "Tj" {
 				if startrm {
-					(*parsed)[id] = &contentstream.ContentStreamOperation{}
 					printRomved(i2, "TJ OR RE OR Tj OR h")
-					//startrm=false
+					(*parsed)[id] = &contentstream.ContentStreamOperation{}
+
+					//	i2.Params[0].(*core.PdfObjectArray).Set(0,&core.PdfObjectString{})
+
+					needreset = true
+					startrm = true
 				}
 			} else if i2.Operand == "m" {
 
@@ -239,19 +216,22 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 				if typex.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) && (typey.Elem() == reflect.TypeOf(core.PdfObjectFloat(0))) {
 
 					if *x.(*core.PdfObjectFloat) < 16 && *x.(*core.PdfObjectFloat) > -16 && *y.(*core.PdfObjectFloat) > 365 && *y.(*core.PdfObjectFloat) < 370 {
+
+						printRomved(i2, "m")
 						(*parsed)[id] = &contentstream.ContentStreamOperation{}
 						needreset = true
 						startrm = true
-						printRomved(i2, "m")
 					}
 				}
 			}
 		}
 
 	}
-	fmt.Println(alltype)
+
+	fmt.Println("====END====PCCC==================================")
+	//fmt.Println(alltype)
 	if needreset {
-		//fmt.Println(string(parsed.Bytes()))
+		fmt.Println(string(parsed.Bytes()))
 		content.Stream, _ = core.NewFlateEncoder().EncodeBytes(parsed.Bytes())
 	}
 
@@ -259,7 +239,7 @@ func filterTj(content *core.PdfObjectStream, left bool) {
 }
 
 func validatekaKa(y, x *core.PdfObjectFloat) bool {
-	if *y < 23.5 && *x > 12 { //x坐标小于12 y坐标大于30    6 0 0 6 24.5576019(x) 30.1304016(y) Tm这样的就不处理
+	if (*y < 23.5 && *x > 12) || (*y < 12 && *x > 20.5) { //x坐标小于12 y坐标大于30    6 0 0 6 24.5576019(x) 30.1304016(y) Tm这样的就不处理
 		return true
 	}
 	return false
@@ -269,8 +249,8 @@ func validateTm(y, x core.PdfObject) bool {
 
 	typex := reflect.TypeOf(x)
 	typey := reflect.TypeOf(y)
-	fmt.Println(typex.Elem().Name())
-	fmt.Println(typex.Elem().Kind())
+	//fmt.Println(typex.Elem().Name())
+	//fmt.Println(typex.Elem().Kind())
 	if typex.Elem() == reflect.TypeOf(core.PdfObjectFloat(0)) {
 		vx = reflect.ValueOf(x).Elem().Float()
 	}
@@ -288,7 +268,7 @@ func validateTm(y, x core.PdfObject) bool {
 		return true
 	}
 
-	fmt.Println(vx, vy)
+	//fmt.Println(vx, vy)
 
 	return false
 }
@@ -303,7 +283,7 @@ func validatekother(y, x *core.PdfObjectFloat) bool {
 	//(*y>37 && *y<366 && *x>568 && *x<573.8) 处理竖条
 
 	// && *x!=569.791 && *x!=570.1025) //处理hiraganahyo-a4-1 的单杠
-	if ((*y < 378.5 && *y > 370) || *y < 18) && *x > 568 && *x < 577 || (*y > 37 && *y < 366 && *x > 568 && *x < 573.8 && *x != 568.5332 && *x != 569.791 && *x != 570.1025) || (*y < 376 && *x > 570 && *x < 578.68 && *x != 575.6201 && *x != 575.6797 && *x != 575.3105) {
+	if ((*y < 378.5 && *y > 370) || *y < 18) && *x > 568 && *x < 577 || (*y > 37 && *y < 366 && *x > 568 && *x < 573.8 && *x != 568.5332 && *x != 569.791 && *x != 570.1025) || (*y < 376 && *x > 570 && *x < 578.68 && *x != 576.6162 && *x != 574.749 && *x != 577.8789 && *x != 575.6201 && *x != 575.6797 && *x != 575.3105) {
 		return true
 	}
 	return false
